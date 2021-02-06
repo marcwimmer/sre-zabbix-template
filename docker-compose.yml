@@ -1,0 +1,90 @@
+version: "3.7"
+networks:
+    frontend:
+        name: frontend
+    zabbix:
+        ipam:
+            config:
+                - subnet: 10.103.0.0/16
+services:
+    zabbix-db:
+        image: postgres:12
+        restart: "unless-stopped"
+        expose:
+            - 3306
+        networks:
+            - zabbix
+        environment:
+            POSTGRES_USER: zabbix
+            POSTGRES_PASSWORD: zabbix
+            POSTGRES_DB: zabbix
+            PG_DATA: /var/lib/postgresql/data/pgdata #data storage
+        volumes:
+            - ./pgdata:/var/lib/postgresql/data
+ 
+    zabbix-db-backup:
+         restart: "unless-stopped"
+         image: kartoza/pg-backup
+         links:
+             - "zabbix-db:db"
+         volumes:
+             - ./backups:/backups
+         networks:
+             - zabbix
+         environment:
+             DUMPPREFIX: zabbix
+             POSTGRES_USER: zabbix
+             POSTGRES_PASS: zabbix
+             POSTGRES_DBNAME: zabbix
+             POSTGRES_HOST: db
+             DBLIST: zabbix
+ 
+    zabbix-server:
+        image: zabbix/zabbix-server-pgsql:ubuntu-latest
+        restart: "unless-stopped"
+        networks:
+            - zabbix
+        ports:
+            - "10051:10051"
+        environment:
+            - DB_SERVER_HOST=zabbix-db
+            - POSTGRES_USER=zabbix
+            - POSTGRES_PASSWORD=zabbix
+        volumes:
+            - ./volumes/zabbix/alertscripts:/usr/lib/zabbix/alertscripts
+            - ./volumes/zabbix/externalscripts:/usr/lib/zabbix/externalscripts
+            - ./volumes/zabbix/modules:/var/lib/zabbix/modules
+            - ./volumes/zabbix/enc:/var/lib/zabbix/enc
+            - ./volumes/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
+            - ./volumes/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs
+            - ./volumes/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys
+            - ./volumes/zabbix/ssl_ca:/var/lib/zabbix/ssl/ssl_ca
+            - ./volumes/zabbix/snmptraps:/var/lib/zabbix/snmptraps
+            - ./volumes/zabbix/mibs:/var/lib/zabbix/mibs
+ 
+    zabbix_web:
+        image: zabbix/zabbix-web-nginx-pgsql:ubuntu-latest
+        restart: "unless-stopped"
+        ports:
+            - "127.0.0.1:8888:8080"
+        environment:
+            - DB_SERVER_HOST=zabbix-db
+            - POSTGRES_USER=zabbix
+            - POSTGRES_PASSWORD=zabbix
+            - ZBX_SERVER=server
+            - PHP_TZ=UTC
+        networks:
+            - frontend
+            - zabbix
+ 
+    zabbix-agent:
+        image: zabbix/zabbix-agent:latest
+        environment:
+           - ZBX_HOSTNAME=zabbix-server
+        privileged: true
+        restart: "unless-stopped"
+        links:
+            - zabbix-db
+            - zabbix-server
+        networks:
+            - zabbix
