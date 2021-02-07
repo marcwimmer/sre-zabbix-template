@@ -88,3 +88,13 @@ services:
             - zabbix-server
         networks:
             - zabbix
+
+    zabbix-mqtt-agent:
+        build: zabbix-mqtt-agent
+        environment:
+           - ZBX_HOSTNAME=zabbix-server
+        restart: "unless-stopped"
+        links:
+            - zabbix-server
+        networks:
+            - zabbix
