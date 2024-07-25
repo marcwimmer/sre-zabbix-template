@@ -8,7 +8,7 @@ networks:
                 - subnet: 10.103.0.0/16
 services:
     zabbix-db:
-        image: postgres:12
+        image: postgres:16
         restart: "unless-stopped"
         expose:
             - 3306
