@@ -71,7 +71,7 @@ services:
             - DB_SERVER_HOST=zabbix-db
             - POSTGRES_USER=zabbix
             - POSTGRES_PASSWORD=zabbix
-            - ZBX_SERVER=server
+            - ZBX_SERVER_HOST=zabbix-server
             - PHP_TZ=UTC
         networks:
             - frontend
